@@ -16,6 +16,7 @@ Init:
 	pwmout pwmdiv16,2,255,500	;PWM to drive 7seg (reduces current), 244Hz @ 50% DC
 	setint %00000000,%00010000	;set interrupt for falling edge on pin In 4 to start toasting cycle
 	high decimal 	;set B.4 high to turn off decimal point
+	low electromagnet	;set B.7 to low to make sure electromagnet is off to start
 	
 Idle:
 	;*******
