@@ -8,7 +8,7 @@ symbol bcd1 = b.1
 symbol bcd2 = b.2
 symbol bcd3 = b.3
 symbol decimal = b.4
-symbol start = pinC.4
+symbol start = 4
 symbol cancel = 5
 
 Init:
@@ -26,6 +26,8 @@ Idle:
 	;TODO read thermistor to adjust heat setting
 	;readadc10 1,thermistor
 	;debug thermistor
+	
+	toggle b.7
 	
 	readadc 0,potentiometer	;read the val of the potentiometer
 	select case potentiometer
@@ -91,6 +93,8 @@ ToastStart:
 		for decimalCounter = 0 to 100
 			;check for cancel button pressed
 			button cancel,0,255,0,b6,1,lb1
+			;has the start lever been release manually, then exit
+			button start,1,255,0,b7,1,lb1
 			;blink decimal
 			toggle B.4 	;blink decimal
 			pause 100	;pause 100 ms to produce 5Hz signal
