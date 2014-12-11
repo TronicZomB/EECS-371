@@ -13,7 +13,7 @@ symbol cancel = 5
 
 Init:
 	pwmout 2,32,67	;PWM to drive 7seg (reduces current), 30kHz @ 50% DC
-	pwmout 1,32,0	;PWM electromagnet to reduce current, set to 0 DC to turn off initially
+	pwmout 1,24,0	;PWM electromagnet to reduce current @40kHz, set to 0 DC to turn off initially
 	setint %00000000,%00010000	;set interrupt for falling edge on pin In 4 to start toasting cycle
 	high decimal 	;set B.4 high to turn off decimal point
 	
@@ -65,7 +65,7 @@ Idle:
 interrupt:
 ToastStart:
 	;TODO start triac
-	pwmduty 1,67	;turn on the electromagnet @30kHz
+	pwmduty 1,55	;turn on the electromagnet @40kHz @55% DC
 	
 	for toastTimeCounter = toastTimeDuration to 0 step -1
 		if toastTimeCounter = 0 then exit	;exit when 0 like this or cycles will last 10s more than they should
