@@ -8,12 +8,12 @@ symbol bcd1 = b.1
 symbol bcd2 = b.2
 symbol bcd3 = b.3
 symbol decimal = b.4
-symbol electromagnet = b.7
 symbol start = pinC.4
 symbol cancel = pinC.5
 
 Init:
-	pwmout pwmdiv16,2,255,500	;PWM to drive 7seg (reduces current), 244Hz @ 50% DC
+	pwmout 2,32,67	;PWM to drive 7seg (reduces current), 30kHz @ 50% DC
+	pwmout 1,32,0	;PWM electromagnet to reduce current, set to 0 DC to turn off initially
 	setint %00000000,%00010000	;set interrupt for falling edge on pin In 4 to start toasting cycle
 	high decimal 	;set B.4 high to turn off decimal point
 	low electromagnet	;set B.7 to low to make sure electromagnet is off to start
@@ -64,7 +64,7 @@ Idle:
 interrupt:
 ToastStart:
 	;TODO start triac
-	high electromagnet	;turn on the electromagnet
+	pwmduty 1,67	;turn on the electromagnet @30kHz
 	
 	for toastTimeCounter = toastTimeDuration to 0 step -1
 		if toastTimeCounter = 0 then exit	;exit when 0 like this or cycles will last 10s more than they should
@@ -107,9 +107,9 @@ ToastStart:
 	
 endCycle:
 	;TODO release toaster cycle (triac)
-	low electromagnet	;turn off electromagnet
+	pwmduty 1,0	;turn off electromagnet
 	high decimal	;make sure the decimal is off
-	pause 100	;pause long enough for electromagnet to release
+	pause 100	;pause long enough for electromagnet to release and not trigger another "cycle"
 	setint %00000000,%00010000	;set interrupt for falling edge on pin In 4 to start toasting cycle
 	return
 	
