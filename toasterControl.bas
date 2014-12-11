@@ -9,14 +9,13 @@ symbol bcd2 = b.2
 symbol bcd3 = b.3
 symbol decimal = b.4
 symbol start = pinC.4
-symbol cancel = pinC.5
+symbol cancel = 5
 
 Init:
 	pwmout 2,32,67	;PWM to drive 7seg (reduces current), 30kHz @ 50% DC
 	pwmout 1,32,0	;PWM electromagnet to reduce current, set to 0 DC to turn off initially
 	setint %00000000,%00010000	;set interrupt for falling edge on pin In 4 to start toasting cycle
 	high decimal 	;set B.4 high to turn off decimal point
-	low electromagnet	;set B.7 to low to make sure electromagnet is off to start
 	
 Idle:
 	;*******
@@ -91,17 +90,14 @@ ToastStart:
 		;blink decimal for 10s before decrementing count to next display number
 		for decimalCounter = 0 to 100
 			;check for cancel button pressed
-			if cancel = 0 then
-				toastTimeCounter = 0	;set to 0 to exit outer loop
-				gosub endCycle	;clean up the current cycle
-				exit	;exit this loop
-			end if
+			button cancel,0,255,0,b6,1,lb1
 			;blink decimal
 			toggle B.4 	;blink decimal
 			pause 100	;pause 100 ms to produce 5Hz signal
 		next decimalCounter
 	next toastTimeCounter
 	
+lb1:
 	gosub endCycle
 	return
 	
