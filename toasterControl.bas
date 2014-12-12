@@ -3,19 +3,26 @@ symbol toastTimeDuration = b1
 symbol toastTimeCounter = b2
 symbol decimalCounter = b3
 symbol thermistor = w2
+symbol button1 = b6 	;button1-3: dummy button vars for 'button' command
+symbol button2 = b7
+symbol button3 = b8
+symbol inMask = b9
+symbol timeElapsed = b10
 symbol bcd0 = b.0
 symbol bcd1 = b.1
 symbol bcd2 = b.2
 symbol bcd3 = b.3
 symbol decimal = b.4
+symbol triac = b.7
 symbol start = 4
 symbol cancel = 5
+let b9 = %10000000
 
 Init:
 	pwmout 2,32,67	;PWM to drive 7seg (reduces current), 30kHz @ 50% DC
 	pwmout 1,24,0	;PWM electromagnet to reduce current @40kHz, set to 0 DC to turn off initially
-	setint %00000000,%00010000	;set interrupt for falling edge on pin In 4 to start toasting cycle
 	high decimal 	;set B.4 high to turn off decimal point
+	high triac	;set B.7 high to turn off triac to begin
 	
 Idle:
 	;*******
@@ -27,7 +34,8 @@ Idle:
 	;readadc10 1,thermistor
 	;debug thermistor
 	
-	toggle b.7
+	;has the start lever been pressed, then start toasting
+	button start,1,255,0,button3,1,ToastStart
 	
 	readadc 0,potentiometer	;read the val of the potentiometer
 	select case potentiometer
@@ -63,9 +71,16 @@ Idle:
 	goto Idle
 
 interrupt:
+	pulsout triac,1	;pulse the fet to in turn pulse triac gate to trigger the triac
+	inMask = inMask ^  %10000000	;check for the next edge, rising or falling
+	setint inMask,%10000000	;set interrupt for zero cross on pin 7
+	
+	return
+	
 ToastStart:
 	;TODO start triac
 	pwmduty 1,55	;turn on the electromagnet @40kHz @55% DC
+	setint inMask,%10000000	;set interrupt for zero cross on pin 7
 	
 	for toastTimeCounter = toastTimeDuration to 0 step -1
 		if toastTimeCounter = 0 then exit	;exit when 0 like this or cycles will last 10s more than they should
@@ -92,27 +107,23 @@ ToastStart:
 		;blink decimal for 10s before decrementing count to next display number
 		for decimalCounter = 0 to 100
 			;check for cancel button pressed
-			button cancel,0,255,0,b6,1,lb1
-			;has the start lever been release manually, then exit
-			button start,1,255,0,b7,1,lb1
+			button cancel,1,255,0,button1,1,endCycle
+			;has the start lever been released manually, then exit
+			button start,0,255,0,button2,1,endCycle
 			;blink decimal
-			toggle B.4 	;blink decimal
+			toggle decimal 	;blink decimal
 			pause 100	;pause 100 ms to produce 5Hz signal
 		next decimalCounter
 	next toastTimeCounter
 	
-lb1:
-	gosub endCycle
-	return
-	
 endCycle:
-	;TODO release toaster cycle (triac)
+	setint off	;turn off the triac trigger interrupt
 	pwmduty 1,0	;turn off electromagnet
 	high decimal	;make sure the decimal is off
-	pause 100	;pause long enough for electromagnet to release and not trigger another "cycle"
-	setint %00000000,%00010000	;set interrupt for falling edge on pin In 4 to start toasting cycle
-	return
+	;pause 100	;pause long enough for electromagnet to release and not trigger another "cycle"
+	goto Idle
 	
+;Display numbers
 Nine:
 	high bcd3	;output BCD 9 to display 9 on 7seg
 	low bcd2
