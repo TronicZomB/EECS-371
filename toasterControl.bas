@@ -1,3 +1,4 @@
+let b9 = %00000000
 symbol potentiometer = b0
 symbol toastTimeDuration = b1
 symbol toastTimeCounter = b2
@@ -8,6 +9,7 @@ symbol button2 = b7
 symbol button3 = b8
 symbol inMask = b9
 symbol timeElapsed = b10
+symbol pauseCounter = b11
 symbol bcd0 = b.0
 symbol bcd1 = b.1
 symbol bcd2 = b.2
@@ -16,7 +18,6 @@ symbol decimal = b.4
 symbol triac = b.7
 symbol start = 4
 symbol cancel = 5
-let b9 = %10000000
 
 Init:
 	pwmout 2,32,67	;PWM to drive 7seg (reduces current), 30kHz @ 50% DC
@@ -71,16 +72,16 @@ Idle:
 	goto Idle
 
 interrupt:
-	pulsout triac,1	;pulse the fet to in turn pulse triac gate to trigger the triac
-	inMask = inMask ^  %10000000	;check for the next edge, rising or falling
-	setint inMask,%10000000	;set interrupt for zero cross on pin 7
+	pause 2 	;pause to align zero cross trigger with zero cross
+	pulsout triac,10	;pulse the fet to in turn pulse triac gate to trigger the triac
+	inMask = inMask ^  %01000000	;check for the next edge, rising or falling
+	setint inMask,%01000000	;set interrupt for zero cross on pin 7
 	
 	return
 	
 ToastStart:
-	;TODO start triac
 	pwmduty 1,55	;turn on the electromagnet @40kHz @55% DC
-	setint inMask,%10000000	;set interrupt for zero cross on pin 7
+	setint inMask,%01000000	;set interrupt for zero cross on pin 7
 	
 	for toastTimeCounter = toastTimeDuration to 0 step -1
 		if toastTimeCounter = 0 then exit	;exit when 0 like this or cycles will last 10s more than they should
@@ -105,14 +106,23 @@ ToastStart:
 			gosub One
 		endselect
 		;blink decimal for 10s before decrementing count to next display number
-		for decimalCounter = 0 to 100
+		;should have used zero cross 60Hz as timing instead of loops and pauses but this is what happens at 4am...
+		for decimalCounter = 0 to 70
 			;check for cancel button pressed
 			button cancel,1,255,0,button1,1,endCycle
 			;has the start lever been released manually, then exit
 			button start,0,255,0,button2,1,endCycle
 			;blink decimal
 			toggle decimal 	;blink decimal
-			pause 100	;pause 100 ms to produce 5Hz signal
+			for pauseCounter = 0 to 15
+				readadc10 1,thermistor
+				if thermistor < 45 then
+					setint off
+				else 
+					setint inMask,%01000000
+				endif
+				pause 4 	;break the pause into multiple smaller ones so interrupt does not disturb the timing 
+			next pauseCounter
 		next decimalCounter
 	next toastTimeCounter
 	
@@ -120,7 +130,6 @@ endCycle:
 	setint off	;turn off the triac trigger interrupt
 	pwmduty 1,0	;turn off electromagnet
 	high decimal	;make sure the decimal is off
-	;pause 100	;pause long enough for electromagnet to release and not trigger another "cycle"
 	goto Idle
 	
 ;Display numbers
